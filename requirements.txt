@@ -1,4 +1,5 @@
 streamlit
-langchain==0.1.14
+langchain==0.0.350
 langchain-groq
+pydantic==1.10.13
 python-dotenv
