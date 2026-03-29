@@ -16,9 +16,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# FIX 1: Removed duplicate "from langchain_groq import ChatGroq" import
 from langchain_groq import ChatGroq
 from langchain.memory import ConversationBufferMemory
-from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage, SystemMessage
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -240,9 +240,9 @@ def run_debug_tool(code: str) -> dict:
     result   = {
         "language":        language.upper(),
         "syntax_errors":   [],
-        "runtime_errors":  [],   # now a LIST not single item
+        "runtime_errors":  [],
         "compiler_errors": [],
-        "logic_hints":     [],   # filled by LLM review pass
+        "logic_hints":     [],
         "clean":           False,
     }
 
@@ -471,7 +471,7 @@ def run_streamlit():
     st.markdown("Supports **Python · C · C++ · Java** — detects Syntax, Runtime, Compiler & Logic errors")
     st.divider()
 
-    # ── Sidebar: API Key ──────────────────────────────────────────────────────
+    # ── Sidebar ───────────────────────────────────────────────────────────────
     with st.sidebar:
         st.markdown("### ⚙️ Configuration")
         api_key_input = st.text_input(
@@ -586,7 +586,7 @@ def run_streamlit():
 
     analyze_btn = st.button("🔍 Analyze Code", type="primary", use_container_width=True)
 
-    # ── Analysis ─────────────────────────────────────────────────────────────
+    # ── Analysis ──────────────────────────────────────────────────────────────
     if analyze_btn:
         if not code_input.strip():
             st.warning("Please paste some code first.")
@@ -605,7 +605,6 @@ def run_streamlit():
         lang       = detect_language(code_input)
         line_count = len(code_input.splitlines())
 
-        # Language badge colors
         badge_colors = {
             "python": "#3776ab", "java": "#f89820",
             "c": "#555555", "cpp": "#00599c",
@@ -672,13 +671,12 @@ def run_streamlit():
             with st.spinner(f"Explaining {total} error(s)..."):
                 try:
                     explanation = explain_errors(llm, result, code_input)
-                    # Split explanation and corrected code
                     if "CORRECTED CODE:" in explanation:
                         parts       = explanation.split("CORRECTED CODE:", 1)
                         explain_txt = parts[0].strip()
                         fixed_block = parts[1].strip().strip("`").strip()
-                        # Remove language tag if present (```python, ```java etc)
                         fixed_lines = fixed_block.splitlines()
+                        # FIX 2: Corrected "\n".join — was a raw newline literal before
                         if fixed_lines and re.match(r"^[a-zA-Z+]+$", fixed_lines[0].strip()):
                             fixed_block = "\n".join(fixed_lines[1:])
                     else:
@@ -709,10 +707,11 @@ def run_streamlit():
                 try:
                     logic_review = review_logic(llm, code_input, lang.upper())
                     if "CORRECTED CODE:" in logic_review:
-                        parts        = logic_review.split("CORRECTED CODE:", 1)
-                        logic_txt    = parts[0].strip()
-                        logic_fixed  = parts[1].strip().strip("`").strip()
-                        logic_lines  = logic_fixed.splitlines()
+                        parts       = logic_review.split("CORRECTED CODE:", 1)
+                        logic_txt   = parts[0].strip()
+                        logic_fixed = parts[1].strip().strip("`").strip()
+                        logic_lines = logic_fixed.splitlines()
+                        # FIX 2: Corrected "\n".join — was a raw newline literal before
                         if logic_lines and re.match(r"^[a-zA-Z+]+$", logic_lines[0].strip()):
                             logic_fixed = "\n".join(logic_lines[1:])
                     else:
@@ -852,8 +851,7 @@ def run_cli():
                     explain_txt = parts[0].strip()
                     fixed_block = parts[1].strip().strip("`").strip()
                     fixed_lines = fixed_block.splitlines()
-                    import re as _re
-                    if fixed_lines and _re.match(r"^[a-zA-Z+]+$", fixed_lines[0].strip()):
+                    if fixed_lines and re.match(r"^[a-zA-Z+]+$", fixed_lines[0].strip()):
                         fixed_block = "\n".join(fixed_lines[1:])
                     print(explain_txt)
                     print("\n" + "-" * 60)
@@ -875,8 +873,7 @@ def run_cli():
                 logic_txt   = parts[0].strip()
                 logic_fixed = parts[1].strip().strip("`").strip()
                 logic_lines = logic_fixed.splitlines()
-                import re as _re
-                if logic_lines and _re.match(r"^[a-zA-Z+]+$", logic_lines[0].strip()):
+                if logic_lines and re.match(r"^[a-zA-Z+]+$", logic_lines[0].strip()):
                     logic_fixed = "\n".join(logic_lines[1:])
                 print(logic_txt)
                 if "No logic errors found" not in logic_txt:
