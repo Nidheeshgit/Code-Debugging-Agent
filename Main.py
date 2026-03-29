@@ -16,7 +16,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# FIX 1: Removed duplicate "from langchain_groq import ChatGroq" import
 from langchain_groq import ChatGroq
 from langchain.memory import ConversationBufferMemory
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -70,10 +69,6 @@ def collect_python_syntax_errors(code: str) -> list:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def collect_python_runtime_errors(code: str) -> list:
-    """
-    Runs the code, catches the crash, patches that line, reruns.
-    Repeats until no more runtime errors or 20 passes done.
-    """
     errors = []
     working_lines = code.splitlines()
     seen_lines = set()
@@ -197,7 +192,6 @@ def compile_java(code: str) -> list:
         return [{"type": "ToolError", "line": None,
                  "message": "javac not found. Please install JDK."}]
 
-    # Java requires filename == public class name
     class_match = re.search(r"public\s+class\s+(\w+)", code)
     class_name  = class_match.group(1) if class_match else "Main"
 
@@ -474,12 +468,18 @@ def run_streamlit():
     # ── Sidebar ───────────────────────────────────────────────────────────────
     with st.sidebar:
         st.markdown("### ⚙️ Configuration")
-        api_key_input = st.text_input(
-            "Groq API Key",
-            type="password",
-            value=os.environ.get("GROQ_API_KEY", ""),
-            help="Get a free key at https://console.groq.com",
-        )
+
+        # ── CHANGED: Load API key silently from environment (.env file) ───────
+        # No text input shown. Key is read from GROQ_API_KEY env variable,
+        # which is loaded automatically via load_dotenv() at the top.
+        api_key_input = os.environ.get("GROQ_API_KEY", "").strip()
+
+        if api_key_input:
+            st.success("✅ API key loaded from environment")
+        else:
+            st.error("❌ GROQ_API_KEY not found. Add it to your .env file.")
+        # ── END CHANGE ────────────────────────────────────────────────────────
+
         st.markdown("---")
         st.markdown("### 🔍 Detection Modes")
         do_logic = st.toggle("Logic Error Review (LLM)", value=True)
@@ -592,9 +592,11 @@ def run_streamlit():
             st.warning("Please paste some code first.")
             st.stop()
 
-        if not api_key_input.strip():
-            st.error("Please enter your Groq API key in the sidebar.")
+        # ── CHANGED: Show error and stop if key is missing (no text input fallback)
+        if not api_key_input:
+            st.error("❌ GROQ_API_KEY not found. Please add it to your .env file and restart the app.")
             st.stop()
+        # ── END CHANGE ────────────────────────────────────────────────────────
 
         try:
             llm = build_llm(api_key_input)
@@ -676,7 +678,6 @@ def run_streamlit():
                         explain_txt = parts[0].strip()
                         fixed_block = parts[1].strip().strip("`").strip()
                         fixed_lines = fixed_block.splitlines()
-                        # FIX 2: Corrected "\n".join — was a raw newline literal before
                         if fixed_lines and re.match(r"^[a-zA-Z+]+$", fixed_lines[0].strip()):
                             fixed_block = "\n".join(fixed_lines[1:])
                     else:
@@ -711,7 +712,6 @@ def run_streamlit():
                         logic_txt   = parts[0].strip()
                         logic_fixed = parts[1].strip().strip("`").strip()
                         logic_lines = logic_fixed.splitlines()
-                        # FIX 2: Corrected "\n".join — was a raw newline literal before
                         if logic_lines and re.match(r"^[a-zA-Z+]+$", logic_lines[0].strip()):
                             logic_fixed = "\n".join(logic_lines[1:])
                     else:
